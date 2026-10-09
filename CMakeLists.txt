@@ -11,7 +11,7 @@ project(accounting_agent_printer CXX)
 # 3) fetched from ACCOUNTING_AGENT_CORE_GIT at ACCOUNTING_AGENT_CORE_TAG.
 set(ACCOUNTING_AGENT_CORE_DIR "" CACHE PATH "Local checkout of accounting-agent-core")
 set(ACCOUNTING_AGENT_CORE_GIT "https://github.com/kirillketrik/accounting-agent-core.git" CACHE STRING "accounting-agent-core repository")
-set(ACCOUNTING_AGENT_CORE_TAG "main" CACHE STRING "accounting-agent-core tag/branch (pin a release tag)")
+set(ACCOUNTING_AGENT_CORE_TAG "v1.1.0" CACHE STRING "accounting-agent-core tag/branch (pin a release tag)")
 if(NOT ACCOUNTING_AGENT_CORE_DIR AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../accounting-agent-core/CMakeLists.txt")
     set(ACCOUNTING_AGENT_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../accounting-agent-core")
 endif()
