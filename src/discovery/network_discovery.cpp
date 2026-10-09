@@ -179,7 +179,7 @@ PrinterInfo BuildPrinterInfo(const SnmpDiscoveredPrinter& d, const PrinterInfo* 
 
 } // namespace
 
-DiscoveryResult NetworkDiscovery::Run(const AgentConfig& config, const std::vector<HostAddress>& hostIps,
+DiscoveryResult NetworkDiscovery::Run(const PrinterConfig& config, const std::vector<HostAddress>& hostIps,
                                       const std::set<std::string>& skipHosts, Logger& logger, HANDLE stopEvent) {
     DiscoveryResult result;
     size_t maxHosts = (size_t)config.discoveryMaxHosts;

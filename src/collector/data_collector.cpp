@@ -1,11 +1,10 @@
 #include "data_collector.h"
 #include "common/json_writer.h"
 #include "wmi/wmi_client.h"
-#include "wmi/printer_enumerator.h"
+#include "collector/printer_enumerator.h"
 #include "snmp/snmp_client.h"
 #include "registry/registry_reader.h"
 #include "network/network_info.h"
-#include "http/http_client.h"
 #include "pjl/pjl_client.h"
 #include <windows.h>
 #include <cstdio>
@@ -75,7 +74,7 @@ bool TryGetSpoolerPageCount(WmiSession& wmi, const std::string& printerName, uin
     return true;
 }
 
-void CollectPageCountForPrinter(WmiSession& wmi, PrinterInfo& p, const AgentConfig& config, Logger& logger, HANDLE stopEvent) {
+void CollectPageCountForPrinter(WmiSession& wmi, PrinterInfo& p, const PrinterConfig& config, Logger& logger, HANDLE stopEvent) {
     if (p.portType == PortType::TcpIp || p.portType == PortType::Wsd) {
         if (!p.hostResolved || p.resolvedHost.empty()) {
             p.note = p.note.empty() ? "could not determine IP" : p.note;
@@ -170,9 +169,11 @@ bool EvaluateReachableThisCycle(const PrinterInfo& p) {
     return false;
 }
 
-void WritePrinterJson(JsonWriter& w, const PrinterInfo& p) {
+void WritePrinterJson(JsonWriter& w, const PrinterInfo& p, const std::string& collectedAtUtc) {
     w.BeginObjectElement();
     w.Field("name", p.name);
+    // Repeated per record: a profile may read the measurement time relative to the record.
+    w.Field("collectedAtUtc", collectedAtUtc);
     w.Field("driverName", p.driverName);
     w.Field("portName", p.portName);
     w.Field("portType", PortTypeName(p.portType));
@@ -211,15 +212,14 @@ void WritePrinterJson(JsonWriter& w, const PrinterInfo& p) {
 
 } // namespace
 
-void RunCollectionCycle(const AgentConfig& config, Logger& logger, LivenessTracker& tracker,
-                        NetworkDiscovery& discovery, HANDLE stopEvent) {
-    logger.Info("Starting collection cycle.");
+std::string CollectPrinterReport(const PrinterConfig& config, Logger& logger, LivenessTracker& tracker,
+                                 NetworkDiscovery& discovery, HANDLE stopEvent) {
 
     try {
         WmiSession wmi(logger);
         if (!wmi.Connect()) {
             logger.Error("Collection cycle aborted: could not connect to WMI (ROOT\\CIMV2).");
-            return;
+            return std::string();
         }
 
         std::vector<PrinterInfo> printers = EnumeratePrinters(wmi, logger);
@@ -295,24 +295,15 @@ void RunCollectionCycle(const AgentConfig& config, Logger& logger, LivenessTrack
                 ") no longer enumerated by Windows.");
         }
 
+        const std::string collectedAt = CurrentIso8601Utc();
         JsonWriter w;
         w.BeginObject();
-        w.Field("hostname", hostName);
-        w.Field("collectedAtUtc", CurrentIso8601Utc());
-
-        w.BeginArray("hostIpAddresses");
-        for (const auto& addr : hostIps) {
-            w.BeginObjectElement();
-            w.Field("ip", addr.ip);
-            w.Field("isIPv6", addr.isIPv6);
-            w.Field("adapter", addr.adapterName);
-            w.EndObject();
-        }
-        w.EndArray();
+        WriteHostIdentity(w, hostName, hostIps);
+        w.Field("collectedAtUtc", collectedAt);
 
         w.BeginArray("printers");
         for (const auto& p : printers) {
-            WritePrinterJson(w, p);
+            WritePrinterJson(w, p, collectedAt);
         }
         w.EndArray();
 
@@ -331,16 +322,12 @@ void RunCollectionCycle(const AgentConfig& config, Logger& logger, LivenessTrack
         logger.Debug("Payload size: " + std::to_string(payload.size()) + " bytes, " +
             std::to_string(printers.size()) + " printer(s).");
 
-        HttpPostResult httpResult = HttpPostJson(config.serverUrl, payload, config.authToken, config.httpTimeoutMs, logger);
-        if (httpResult.success) {
-            logger.Info("Collection cycle complete: sent report for " + std::to_string(printers.size()) +
-                " printer(s), server responded HTTP " + std::to_string(httpResult.statusCode) + ".");
-        } else {
-            logger.Error("Collection cycle: failed to send report: " + httpResult.error);
-        }
+        logger.Info("Collected " + std::to_string(printers.size()) + " printer(s).");
+        return payload;
     } catch (const std::exception& ex) {
         logger.Error(std::string("Collection cycle failed with an unexpected exception: ") + ex.what());
     } catch (...) {
         logger.Error("Collection cycle failed with an unknown unexpected error.");
     }
+    return std::string();
 }

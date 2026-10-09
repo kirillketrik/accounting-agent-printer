@@ -3,5 +3,6 @@ cmake-build-*/
 *.user
 CMakeUserPresets.json
 
-# Contains a live bearer token for the ingest server - see config/agent.ini.example instead.
-config/agent.ini
+# Real agent configs contain a live profile key for the ingest server - commit
+# only the config/<agent>.ini.example files.
+config/*.ini

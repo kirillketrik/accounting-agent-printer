@@ -2,7 +2,7 @@
 #include <vector>
 #include "model/printer_info.h"
 #include "common/logger.h"
-#include "wmi_client.h"
+#include "wmi/wmi_client.h"
 
 // Enumerates real (non-virtual) printers installed on this machine via WMI,
 // with port classification and, where possible, the printer's network

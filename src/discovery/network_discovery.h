@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "common/config.h"
+#include "printer_config.h"
 #include "common/logger.h"
 #include "model/printer_info.h"
 #include "network/network_info.h"
@@ -37,7 +37,7 @@ public:
     // `skipHosts` are addresses already reported by an installed queue on
     // this PC - those rows carry more (driver, port, share) than a sweep
     // can, so the discovered duplicate is dropped. Never throws.
-    DiscoveryResult Run(const AgentConfig& config, const std::vector<HostAddress>& hostIps,
+    DiscoveryResult Run(const PrinterConfig& config, const std::vector<HostAddress>& hostIps,
                         const std::set<std::string>& skipHosts, Logger& logger, HANDLE stopEvent);
 
     // Every remembered printer as (dedupKey, name), for a cycle that stops

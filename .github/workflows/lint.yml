@@ -27,7 +27,7 @@ jobs:
       - name: Validate CMakeLists.txt
         run: |
           echo "Checking CMakeLists.txt syntax..."
-          if grep -q "add_executable\|target_link_libraries" CMakeLists.txt; then
+          if grep -qE "add_accounting_agent|add_executable|target_link_libraries" CMakeLists.txt; then
             echo "[OK] CMakeLists.txt structure looks valid"
           else
             echo "[ERROR] CMakeLists.txt may be incomplete"

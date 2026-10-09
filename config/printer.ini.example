@@ -1,35 +1,35 @@
 ; Printer Inventory Agent configuration.
-; This file lives next to printer_agent.exe and is re-read on every service
-; start (not hot-reloaded while running).
+; This file lives next to printer_agent.exe and is read once, on service start
+; (not hot-reloaded while running).
 
 [server]
-; Base URL of the web application's ingest endpoint.
-url=http://172.17.15.13/api/printer-reports
-; Optional bearer token, sent as "Authorization: Bearer <token>" when set.
-; Must match PRINTER_INGEST_TOKEN in the server's .env.
+; Ingest endpoint of the accounting server (http:// works too).
+url=https://accounting.example.com/api/agent-ingest
+; The key of the "Агент принтеров" agent profile (Система -> Профили агентов,
+; shown once; "новый ключ" issues another). It tells the server which profile
+; to apply - there is no other server-side token.
 auth_token=
+; Number of the agent profile. Only needed for the WebSocket channel below.
+profile_id=
 timeout_ms=15000
 
 [polling]
-; Seconds between collection+send cycles. 3600 = once an hour.
-interval_seconds=180
+; Seconds between collection+send cycles. 3600 = once an hour. The server can
+; override it from the profile settings ({"interval_seconds": N}).
+interval_seconds=3600
 ; A printer only flips to "offline" in reports after this many consecutive
 ; bad cycles in a row (unreachable via SNMP, or Windows reports its queue as
 ; offline for local/USB) - a single blip doesn't count.
 offline_after_consecutive_failures=3
 
 [websocket]
-; Optional persistent control channel (ws:// or wss://). When enabled, the
-; agent holds this connection open and, when the server sends a "send report
-; now" signal, runs an immediate collection+send cycle without waiting for
-; interval_seconds. Fully optional - leave disabled if the server doesn't
-; support it yet; the agent works fine on polling alone.
-;
-; Signal message the server should send (a UTF-8 text frame), either form:
-;   {"type":"send_report"}
-;   send_report
-enabled=true
-url=ws://172.17.15.13/api/agent-ws
+; Optional live channel to the profile: the agent shows as "online" in the
+; accounting UI (Профили агентов -> На связи), receives the profile settings
+; and the "send report now" command. Needs Windows 8.1+; on Windows 7 the
+; agent just keeps polling. The URL is derived from [server] url + profile_id
+; unless set here explicitly:
+;url=wss://accounting.example.com/api/agent-ws/<profile id>
+enabled=false
 ; Reconnect pattern: retry every retry_interval_ms. After
 ; max_retries_before_relax consecutive failed attempts, back off for
 ; relax_delay_ms, then reset the counter and resume the fast retries. A
@@ -44,6 +44,19 @@ timeout_ms=2000
 retries=3
 retry_delay_ms=500
 port=161
+
+[discovery]
+; Optional SNMP sweep for printers on the network that this PC has no print
+; queue for (reported with portType "Network"). OFF by default: it sends an
+; SNMP request to every address in the ranges each cycle, which an IDS may
+; flag as a scan.
+enabled=false
+scan_local_subnets=true
+;subnets=10.0.5.0/24, 10.0.7.20
+min_prefix_length=22
+max_hosts=4096
+timeout_ms=1500
+retries=2
 
 [pjl]
 ; Optional highest-priority USB/local page-count source: sends a tiny raw PJL
